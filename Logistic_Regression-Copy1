@@ -1,0 +1,147 @@
+# this is ipynb file.
+### Load the Data and Libraries
+
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+import pandas as pd
+plt.style.use("ggplot")
+%matplotlib inline
+
+from pylab import rcParams
+rcParams['figure.figsize'] = 12, 8
+
+data = pd.read_csv('DMV_Written_Tests.csv')
+data.head()
+
+data.info()
+
+scores =data[['DMV_Test_1','DMV_Test_2']].values
+results = data['Results'].values
+
+#### T Visualize the Data
+
+passed = (results ==1).reshape(100,1)
+failed = (results ==0). reshape(100,1)
+ax = sns.scatterplot(x = scores[passed[: , 0] , 0],
+                     y = scores[passed[: , 0] , 1],
+                     marker ='^',
+                     color ='green',
+                     s=60)
+sns.scatterplot(x=scores[failed[: , 0] , 0],
+                y=scores[failed[: , 0], 1],
+                marker ='X',
+                color ='red',
+                s=60)
+ax.set(xlabel='DMV WRITTEN TEST 1' , ylabel ='DMV WRITTEN TEST 2')
+ax.legend(['passed', 'failed'])
+plt.show();
+
+###Define the Logistic Sigmoid Function  𝜎(𝑧) 
+##𝜎(𝑧)=11+𝑒−𝑧
+
+
+def logistic_function(x):
+    return 1/(1 + np.exp(-x))
+logistic_function(0)    
+
+
+####Compute the Cost Function 𝐽(𝜃) and Gradient¶
+#The objective of logistic regression is to minimize the cost function
+
+#𝐽(𝜃)=−1𝑚∑𝑖=1𝑚[𝑦(𝑖)𝑙𝑜𝑔(ℎ𝜃(𝑥(𝑖)))+(1−𝑦(𝑖))𝑙𝑜𝑔(1−(ℎ𝜃(𝑥(𝑖)))]
+ 
+#where the gradient of the cost function is given by
+
+#∂𝐽(𝜃)∂𝜃𝑗=1𝑚∑𝑖=1𝑚(ℎ𝜃(𝑥(𝑖))−𝑦(𝑖))𝑥(𝑖)𝑗
+    
+def compute_cost(theta , x  ,y):
+    m=len(y)
+    y_pred=logistic_function(np.dot(x,theta))
+    error=(y*np.log(y_pred))+ (1-y)*np.log(1-y_pred)
+    cost= -1/m *sum(error)
+    gradient =1/m *(np.dot(x.transpose(),(y_pred -y)))
+    return cost[0],gradient
+    
+    
+###Cost and Gradient at Initialization
+
+mean_scores=np.mean(scores , axis =0)
+std_scores=np.std(scores, axis=0)
+scores=(scores- mean_scores) /std_scores
+rows=scores.shape[0]
+cols=scores.shape[1]
+X=np.append(np.ones((rows,1)),scores , axis=1)
+y=results.reshape(rows,1)
+theta_init=np.zeros((cols+1 ,1 ))
+cost,gradient =compute_cost(theta_init ,X,y)
+print("COST AT INITIALIZATION" ,cost)
+print("GRADIENT AT INITIALIZATION" ,gradient)
+
+###Gradient Descent
+
+def gradient_descent (X,y,theta,alpha, iterations):
+    costs=[]
+    for i in range(iterations):
+        cost , gradient =compute_cost(theta , X ,y)
+        theta -=(alpha * gradient)
+        costs.append(cost)
+    return theta, costs  
+    
+theta ,costs=gradient_descent(X,y,theta_init,1, 200)
+
+print('Theta after running gradient descent', theta)
+print('Resulting cost:', costs[-1])
+
+
+### Plotting the Convergence of  𝐽(𝜃)
+
+plt.plot(costs)
+plt.xlabel("Iteraions")
+plt.ylabel("$J(\Theta)$")
+plt.title("Values of Cost Function over Iterations  over Gradient Descent");
+
+### Plotting the decision boundary
+#ℎ𝜃(𝑥)=𝜎(𝑧), where 𝜎 is the logistic sigmoid function and 𝑧=𝜃𝑇𝑥
+#When ℎ𝜃(𝑥)≥0.5 the model predicts class "1":
+
+#⟹𝜎(𝜃𝑇𝑥)≥0.5
+#⟹𝜃𝑇𝑥≥0 predict class "1"
+
+#Hence, 𝜃1+𝜃2𝑥2+𝜃3𝑥3=0 is the equation for the decision boundary, giving us
+
+#𝑥3=−(𝜃1+𝜃2𝑥2)𝜃3
+
+ax = sns.scatterplot(x = X[passed[: , 0] , 1],
+                     y = X[passed[: , 0] , 2],
+                     marker ='^',
+                     color ='green',
+                     s=60)
+sns.scatterplot(x = X[failed[: , 0] , 1],
+                y = X[failed[: , 0], 2],
+                marker ='X',
+                color ='red',
+                s=60)
+ax.set(xlabel='DMV WRITTEN TEST 1 SCORES' , ylabel ='DMV WRITTEN TEST 2 SCORES')
+ax.legend(['passed', 'failed'])
+x_boundary=np.array([np.min(X[: ,1]) , np.max(X[:,1])])
+y_boundary=-(theta[0]+ theta[1]*x_boundary)/theta[2]
+sns.lineplot(x=x_boundary , y=y_boundary , color='blue')
+plt.show();
+
+
+### Predictions using the optimized 𝜃 values¶
+#ℎ𝜃(𝑥)=𝑥𝜃
+
+def predict(theta ,X):
+    results=X.dot(theta)
+    return results>0
+p=predict(theta ,X)
+print("Training Accuracy :", sum(p==y)[0] ,"%")
+
+
+test=np.array([50,79])
+test=(test - mean_scores) / std_scores
+test= np.append(np.ones(1) , test)
+probability = logistic_function(test.dot(theta))
+print("A person who scores 50 & 79 on their DMV written test has a"  ,np.round(probability[0] ,2) , "probability of passing")
